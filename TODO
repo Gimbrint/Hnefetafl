@@ -1,0 +1,14 @@
+TODO:
+	Board: 1
+	Edge squares: 1
+	Pieces: 1
+	Moves: 1
+	Variable board width and height: 1
+	Dragging: 1
+	Rules:
+		Border attacks: 1
+		Edge attacks: 1
+		Edge win: 0
+	Position loading: 1
+	Win Screen: 0
+	Retry button: 0
