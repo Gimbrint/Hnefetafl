@@ -1,0 +1,19 @@
+README:
+	This is the input to the program, aka board width, baord height and fen
+
+Syntax:
+	[width] [height] | ["fen"]
+
+	fen:
+				pos (default, (p=Pawn, k=King))		The board represented in a standard Fen format, except different pieces
+				whiteToMove (w=White, b=Black)		Set's the first player to move
+				longMoves (1=on, 0=off)				Set's whether or not piece's can move infinitely in a single direction
+				throne (1=on, 0=off)				Set's whether or not the throne is enabled
+				edgeAttacks (1=on, 0=off)			Set's whether being nearby an edge count's as an attack
+
+		example:
+				4ppppp4/6p6/11/11/p5P5p/p4PPP4p/pp2PPKPP2pp/p4PPP4p/p5P5p/11/11/6p6/4ppppp4 b 1 1 1
+
+--
+
+7 7 | 1pp1pp1/p2P2p/p2P2p/1PPKPP1/p2P2p/p2P2p/1pp1pp b 1 1 1
