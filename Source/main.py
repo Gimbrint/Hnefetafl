@@ -167,7 +167,7 @@ class Hnefetafl:
 					targetPos = piece.pos + self.directions[k] * (h + 1)
 
 					# Square must be empty, and if not king check if it's an edge square
-					if self.board[piece.pos + self.directions[k] * (h + 1)] == None and (piece.piece_type == self.piece_type.KING or not self.is_edge_square(targetPos)) and piece.piece_type == self.piece_type.KING or targetPos != self.throne:
+					if self.board[piece.pos + self.directions[k] * (h + 1)] == None and (piece.piece_type == self.piece_type.KING or not self.is_edge_square(targetPos)) and (piece.piece_type == self.piece_type.KING or targetPos != self.throne):
 						move = self.move(piece.pos, targetPos)
 						move.set_visual_pos(self)
 
