@@ -29,7 +29,7 @@ And you're done!
 
 **1.** Install python, from: https://www.python.org/downloads/
 
-**2.** Open the terminal, go in the .\Source folder and install the required dependencies using:
+**2.** Open the terminal, go in the ./Source folder and install the required dependencies using:
 ```
 pip install -r ./requirements.txt
 ```

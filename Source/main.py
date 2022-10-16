@@ -1,16 +1,17 @@
 from enum import IntEnum
-from sys import argv
 import pygame
 import math
 
 class Hnefetafl:
-	def __init__(self, whiteToMove : bool, sprite_storage, fen : str, width : int=11, height : int=11) -> None:
+	def __init__(self, sprite_storage, fen : str, width : int=11, height : int=11) -> None:
 		self.width = width
-		self.twidth = width + 2 # Total num of columns, including imaginary columns
+		self.twidth = width + 1 # Total num of columns, including imaginary columns
 		self.height = height
 		self.size = width * height
 		self.tsize = self.twidth * height
 
+		# These are the directions that pieces can move in:
+		#     Up, Down, Right, Left
 		self.directions : list = [self.twidth, -self.twidth, 1, -1]
 		self.move_dirs : list = [[list for y in range(4)] for x in range(self.size)]
 		self.calculate_move_dirs()
@@ -28,8 +29,8 @@ class Hnefetafl:
 		self.who_won : str
 
 		# Window
-		self.screenX : int = 800 #1024
-		self.screenY : int = 800 #600
+		self.screenX : int = 800 # 1024
+		self.screenY : int = 800 # 600
 		self.screen = pygame.display.set_mode((self.screenX, self.screenY))
 		
 		# Used for square generating
@@ -56,6 +57,7 @@ class Hnefetafl:
 		held_down = False
 		running = True
 
+		# Input
 		while running:
 			for event in pygame.event.get():
 				if event.type == pygame.QUIT:
@@ -75,7 +77,6 @@ class Hnefetafl:
 
 								selected_piece = self.board[selected_pos]
 								visual_start_pos = selected_piece.visual_pos
-								print("Start")
 					if event.type == pygame.MOUSEBUTTONUP: # Drop piece
 						if selected_piece != None:
 							held_down = False
@@ -92,7 +93,6 @@ class Hnefetafl:
 										break
 
 							selected_piece = None
-							print("YES!!!")
 					if held_down and selected_piece != None: # Drag piece
 						mousePos = pygame.mouse.get_pos()
 						selected_piece.visual_pos = (mousePos[0] - self.chosen_size / 2, mousePos[1] - self.chosen_size / 2)
@@ -306,7 +306,6 @@ class Hnefetafl:
 
 	# Makes a move on the board
 	def make_move(self, move) -> None:
-		print(self.is_inside_board(move.targetPos))
 		if self.board[move.startPos] != None and self.board[move.targetPos] == None and self.is_inside_board(move.targetPos):
 			piece : self.Piece = self.board[move.startPos]
 
@@ -349,58 +348,96 @@ class Hnefetafl:
 
 			self.log_board(self.board, 5, 3)
 
+	# --------------------
+	#	This function calculates the total amount of times you can move in a specified direction,
+	# 	from a given board position.
+	#
+	#	| EXAMPLE |
+	#	(3x3) board:
+	#
+	#	[0, 2, 2, 0], [0, 2, 1, 1], [0, 2, 0, 2]
+	#	[1, 1, 2, 0], [1, 1, 1, 1], [1, 1, 0, 2]
+	#	[2, 0, 2, 0], [2, 0, 1, 1], [2, 0, 0, 2]
+	# --------------------
 	def calculate_move_dirs(self) -> None:
 		for i in range(0, len(self.move_dirs), 1):
-			y = int(i / self.
-			width)
+			y = int(i / self.width)
 			x = i - y * self.width
 
-			self.move_dirs[i][0] = self.height - 1 - y
-			self.move_dirs[i][1] = y
-			self.move_dirs[i][2] = self.height - 1 - x
-			self.move_dirs[i][3] = x
+			self.move_dirs[i][0] = self.height - 1 - y		# UP
+			self.move_dirs[i][1] = y						# DOWN
+			self.move_dirs[i][2] = self.width - 1 - x		# RIGHT
+			self.move_dirs[i][3] = x						# LEFT
 
+	# --------------------
+	#	Here we calculate how many times enemy pieces are attacked.
+	#	We go through each enemy piece, reset their attacked and:
+	#		Go through each direction and check if there is a friendly piece, if then attack the enemy piece
+	#		Else, add this attack for capturing.
+	#
+	#	| EXAMPLE |
+	#	(3x3) board:
+	#	
+	#	pieces: (1st move: w)
+	#		P, _, _
+	#		p, p, _
+	#		_, _, P
+	#
+	#	attacks:
+	#		[(3, 0)], [(4, 0)], []
+	#		[],		  [],       [(4, 1)]
+	#		[(3, 0)], [(4, 0)], []
+	# --------------------
 	def calculate_attack_squares(self) -> None:
+		# Stores: (target, isX)
 		self.attackBoard = [list() for x in range(self.tsize)]
 		opponentPieces : list = self.pieces[self.opponentColorIndex]
 
 		for i in range(0, len(opponentPieces), 1):
+			# The opponent piece we might be attacking
 			op_piece = self.board[opponentPieces[i]]
 			op_piece.reset_attacked()
 
+			# Try out each direction
 			for j in range(0, len(self.directions), 1):
 				targetHex = opponentPieces[i] + self.directions[j]
 				isX = j > 1
 
 				if self.is_inside_board(targetHex):
+					# This is an edge square, and so we are attacked by it, no point in adding an attack to board,
+					# since the only piece that can on the edge are kings, and they can't attack
 					if self.is_edge_square(targetHex) and self.edge_attacks:
-						# This is an edge square, and so we are attacked by it
 						op_piece.attacked += (1 << (isX << 1))
+					# If we are next to the throne and we are the attacker, we are attacked, else if the throne is empty we are also attacked
 					elif self.throne_enabled and targetHex == self.throne:
 						if (self.board[self.throne] == None and op_piece.color_index == self.throne_color_index) or op_piece.color_index != self.throne_color_index:
-							# If we are next to the throne and we are the attacker, we are attacked, else if the throne is empty we are also attacked
 							op_piece.attacked += (1 << (isX << 1))
 					else:
+						# If there is an piecec there, no point in adding an attack to board
 						if not self.board[targetHex] == None:
 							if not self.board[targetHex].color_index == self.board[opponentPieces[i]].color_index and not self.board[targetHex].piece_type == self.piece_type.KING:
 								# If the opponent's piece is not a king, we are being attacked
 								op_piece.attacked += (1 << (isX << 1))
-
-						# Add this attack to the attack board
-						self.attackBoard[targetHex].append((opponentPieces[i] << 1) | (j > 1))
+						# Else Add this attack to the attack board
+						else:
+							self.attackBoard[targetHex].append((opponentPieces[i] << 1) | (j > 1))
 				elif op_piece.piece_type == self.piece_type.KING:
-					# If we are a king the border attacks us!
+					# If we are a king, the border attacks us!
 					op_piece.attacked += (1 << (isX << 1))
 	
+	# Converts an imaginary position to board pos
 	def convert_to_board_pos(self, pos : int):
 		return pos - (int(pos / self.twidth) << 1)
 
+	# Check's whether an imaginary position is inside the board
 	def is_inside_board(self, pos : int) -> bool:
 		return pos >= 0 and pos < self.tsize and (pos % self.twidth) < self.width
 
+	# Check's whether an imaginary position is an edge square
 	def is_edge_square(self, pos : int) -> bool:
-		return pos == 0 or pos == self.width - 1 or pos == self.twidth * (self.height - 1) or pos == self.twidth * self.height - 3
+		return pos == 0 or pos == self.width - 1 or pos == self.twidth * (self.height - 1) or pos == self.twidth * self.height - 2
 
+	# Check's whether the mouse position is inside the board
 	def is_mouse_inside_board(self, pos : tuple[int, int]) -> bool:
 		board_pos_x = pos[0] - self.base_offset_x
 		board_pos_y = pos[1] - self.base_offset_y
@@ -409,11 +446,13 @@ class Hnefetafl:
 			return False
 		return True
 
+	# Convert's the mouse position to an imaginary position
 	def get_mouse_to_board_pos(self, pos : tuple[int, int]) -> int:
 		x = math.floor((pos[0] - self.base_offset_x) / self.chosen_size)
 		y = math.floor((self.screenY - self.base_offset_y - pos[1] - self.base_offset_y) / self.chosen_size)
 		return y * self.twidth + x
 
+	# Log's the specified board, only used for debugging
 	def log_board(self, board : list, width : int, height : int) -> None:
 		if height < 0:
 			return
@@ -528,7 +567,7 @@ if __name__ == '__main__':
 	import os
 	folder_name = os.getcwd() + "\\Sprites"
 	
-	app = Hnefetafl(True, Hnefetafl.sprite_storage(
+	app = Hnefetafl(Hnefetafl.sprite_storage(
 		[
 			pygame.image.load(folder_name + "\\Sprite_Black_Piece.png"),
 			pygame.image.load(folder_name + "\\Sprite_Black_King.png"),
