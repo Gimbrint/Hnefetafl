@@ -570,7 +570,7 @@ if __name__ == '__main__':
 	fen = data[1]
 
 	import os
-	folder_name = os.getcwd() + "\\Sprites"
+	folder_name = ".\\Sprites"
 	
 	app = Hnefetafl(Hnefetafl.sprite_storage(
 		[
