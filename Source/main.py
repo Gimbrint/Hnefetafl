@@ -1,4 +1,5 @@
 from enum import IntEnum
+from sys import exit
 import pygame
 import math
 
@@ -47,7 +48,7 @@ class Hnefetafl:
 		self.restart_game()
 		#self.make_move(self.move(0, 8))
 		#self.make_move(self.move(2, 10))
-		self.log_board(self.board, self.twidth, self.height)
+		#self.log_board(self.board, self.twidth, self.height)
 
 		pygame.init()
 
@@ -63,8 +64,7 @@ class Hnefetafl:
 				if event.type == pygame.QUIT:
 					running = False
 					pygame.quit()
-					import sys
-					sys.exit(0)
+					exit(0)
 				if self.current_state == self.game_state.RUNNING:
 					if event.type == pygame.MOUSEBUTTONDOWN: # Select piece
 						mousePos = pygame.mouse.get_pos()
@@ -166,12 +166,13 @@ class Hnefetafl:
 				for h in range(0, times, 1):
 					targetPos = piece.pos + self.directions[k] * (h + 1)
 
-					# Square must be empty, and if not king check if it's an edge square
-					if self.board[piece.pos + self.directions[k] * (h + 1)] == None and (piece.piece_type == self.piece_type.KING or not self.is_edge_square(targetPos)) and (piece.piece_type == self.piece_type.KING or targetPos != self.throne):
-						move = self.move(piece.pos, targetPos)
-						move.set_visual_pos(self)
+					# Square must be empty, and if not king check if it's an edge square or throne
+					if self.board[piece.pos + self.directions[k] * (h + 1)] == None:
+						if piece.piece_type == self.piece_type.KING or (not self.is_edge_square(targetPos) and targetPos != self.throne):
+							move = self.move(piece.pos, targetPos)
+							move.set_visual_pos(self)
 
-						self.moves[self.friendlyColorIndex].append(move)
+							self.moves[self.friendlyColorIndex].append(move)
 					else:
 						break
 
@@ -180,47 +181,12 @@ class Hnefetafl:
 			'k': self.piece_type.KING, 'p': self.piece_type.PAWN
 		}
 
-		data = notation.split(' ')
+		data : str = notation.split(' ')
 
 		# Check if we have the correct number of chunks
-		chunks = 5
+		chunks : int = 5
 		assert len(data) == chunks, "[ERROR] Num of arguments in notation must be exactly: " + str(chunks)
-
-		file : int = 0
-		rank : int = self.height - 1
-
-		for i in range(0, len(data[0]), 1):
-			symbol = data[0][i]
-
-			if symbol == '/':
-				file = 0
-				rank -= 1
-			else:
-				# Check if outside boundaries
-				assert file < self.width and rank < self.height, "[ERROR] Error after: " + str(symbol) + " | at: " + str((file, rank)) + "\n\nWhen loading a position, you must stay inside the board boundaries, Width: " + str(self.width) + " | Height: " + str(self.height)
-
-				if symbol.isnumeric():
-					file += int(symbol)
-				else:
-					color_type = self.piece_type.BLACK
-					if symbol.upper() == symbol:
-						color_type = self.piece_type.WHITE
-
-					type = piece_type_from_symbol[symbol.lower()]
-
-					if type == self.piece_type.KING:
-						if not self.has_king:
-							self.has_king = True
-
-							if self.throne_enabled and self.throne == -1:
-								self.throne = rank * self.twidth + file
-								self.throne_color_index = color_type >> 3
-						else:
-							assert False, "[ERROR] Can't have more than 1 king"
-
-					self.add_piece(rank * self.twidth + file, type | color_type)
-					file += 1
-
+		
 		# Color to move implementation
 		if data[1].lower() == 'b':
 			self.set_to_move_color(False)
@@ -242,6 +208,7 @@ class Hnefetafl:
 			self.throne_enabled = True
 		elif data[3] == "0":
 			self.throne_enabled = False
+			print("wot")
 		else:
 			assert False, "[ERROR] Throne must be either 1 (on) or 0 (off)"
 		
@@ -252,6 +219,44 @@ class Hnefetafl:
 			self.edge_attacks = False
 		else:
 			assert False, "[ERROR] Edge attacks must be either 1 (on) or 0 (off)"
+
+		# Board loading from fen
+		file : int = 0
+		rank : int = self.height - 1
+
+		for i in range(0, len(data[0]), 1):
+			symbol : str = data[0][i]
+
+			if symbol == '/':
+				file = 0
+				rank -= 1
+			else:
+				# Check if outside boundaries
+				assert file < self.width and rank < self.height, "[ERROR] Error after: " + str(symbol) + " | at: " + str((file, rank)) + "\n\nWhen loading a position, you must stay inside the board boundaries, Width: " + str(self.width) + " | Height: " + str(self.height)
+
+				if symbol.isnumeric():
+					file += int(symbol)
+				else:
+					color_type : int = self.piece_type.BLACK
+					if symbol.upper() == symbol:
+						color_type = self.piece_type.WHITE
+
+					type : piece_type = piece_type_from_symbol[symbol.lower()]
+
+					if type == self.piece_type.KING:
+						if not self.has_king:
+							self.has_king = True
+
+							if self.throne_enabled and self.throne == -1:
+								print(self.throne_enabled)
+								self.throne = rank * self.twidth + file
+								self.throne_color_index = color_type >> 3
+						else:
+							assert False, "[ERROR] Can't have more than 1 king"
+
+					self.add_piece(rank * self.twidth + file, type | color_type)
+					file += 1
+
 
 	def set_to_move_color(self, whiteToMove : bool) -> None:
 		self.whiteToMove = True
@@ -323,11 +328,11 @@ class Hnefetafl:
 			# Check if there are enemy pieces on the target pos, if so, we attack them and they attact us, also skip this if we are a king
 			if not piece.piece_type == self.piece_type.KING and len(self.attackBoard[move.targetPos]) > 0:
 				for i in range(0, len(self.attackBoard[move.targetPos]), 1):
-					data = self.attackBoard[move.targetPos][i]
-					pos = data >> 1
-					isX = data & 1
+					data : int = self.attackBoard[move.targetPos][i]
+					pos : int = data >> 1
+					isX : int = data & 1
 
-					op_piece = self.board[pos]
+					op_piece : piece_type = self.board[pos]
 
 					if not (op_piece.color_index == piece.color_index):
 						# Attack the piece
@@ -346,7 +351,7 @@ class Hnefetafl:
 				# Now it's the opponent's turn!
 				self.start_new_round()
 
-			self.log_board(self.board, 5, 3)
+			#self.log_board(self.board, 5, 3)
 
 	# --------------------
 	#	This function calculates the total amount of times you can move in a specified direction,
@@ -427,7 +432,7 @@ class Hnefetafl:
 	
 	# Converts an imaginary position to board pos
 	def convert_to_board_pos(self, pos : int):
-		return pos - (int(pos / self.twidth) << 1)
+		return pos - int(pos / self.twidth)
 
 	# Check's whether an imaginary position is inside the board
 	def is_inside_board(self, pos : int) -> bool:
